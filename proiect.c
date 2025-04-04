@@ -38,6 +38,7 @@ typedef struct
         - 1 daca avem barca acolo
         - 2 daca avem acolo o barca si s a tras in ea
         - 3 daca avem acolo barca moarta
+        - 4 ne arata ca a fost lovit patratul si nu a lovit nimic
         id stocheaza numarul jucatorului(max 2)
     */
    SHIPS player_ships;
@@ -139,6 +140,11 @@ void show_player(PLAYER* player)
                     case 3:
                     {
                         printf("#");
+                        break;
+                    }
+                    case 4:
+                    {
+                        printf("*");
                         break;
                     }
 
@@ -326,6 +332,25 @@ void place_ship(PLAYER* player, SHIP* position)
 
 }
 
+void ship_delete(PLAYER* player, SHIP* position)
+{
+    if(position->start_i == position->end_i)
+    {
+        for(int j = position->start_j; j <= position->end_j;j++)
+        {
+            player->table[position->start_i][j] = 0;    
+        }
+    }
+    else
+    {
+        for(int i = position->start_i; i <= position->end_i;i++)
+        {
+            player->table[i][position->start_j] = 0;
+        }
+    }
+
+}
+
 void ship_placement(PLAYER* player)
 {
     printf("\n\n--Now that the game started, it's time to place our ships.--\n");
@@ -333,6 +358,7 @@ void ship_placement(PLAYER* player)
     printf("--You can select a square by typing the coordonates of that square in the terminal. A valid square pozition has this format: \"A2\"--\n");
     printf("--Here is how your fleet looks until now:--\n\n");
     show_player(&player[0]);
+
     printf("--Here are the ships that you have to place:--\n--Carrier -1- --\n--Battleship -2- --\n--Cruiser -3- --\n--Submarine -4- --\n--Destroyer -5- --\n");
     printf("--You can select the ship that you want to place by simply typing the number coresponding to the ship--\n");
     printf("--Start placing your ships!--\n");
@@ -340,188 +366,250 @@ void ship_placement(PLAYER* player)
     int ship_selector = 0;
     int remaining_ships = 5;
     //enum ship_names fleet;
+    int reset = 1; // va fi setat 0 daca jucatorul nu vrea ca sa modifice pozitiile navelor
+    int reset_value = 0;
 
-    while(remaining_ships != 0)
-    {
-        printf("--Select the ship that you want to place--\n");
-        scanf("%d", &ship_selector);
+    //remaining_ships = 1;  //am sa il folosesc daor pentru a testa butonul de reset ships
+
+    
+    while(reset != 0 || remaining_ships != 0)
+    {   
         
-
-        switch(ship_selector)
+        while(remaining_ships != 0)
         {
-            case 1:
+            printf("--Select the ship that you want to place--\n");
+            scanf("%d", &ship_selector);
+           // printf("\n\nRemainig ships:%d\n\n",remaining_ships);
+        
+            show_player(&player[0]);
+            switch(ship_selector)
             {
-                printf("--You selected the Carrier. This ship needs to have a lenght of 5--\n");
-                int ok = 1;  // 0 daca ii bine, 1 daca nu ii bine
-                while(ok == 1)
+                case 1:
                 {
-                    SHIP temp;
-                    clear_buffer();
-                    printf("--Please select the starting position--\n");
-                    get_position(&temp.start_i, &temp.start_j);
-
-                    printf("--Please select the ending position--\n");
-                    get_position(&temp.end_i, &temp.end_j);
-                    /*
-                    int delta_i = temp.end_i - temp.start_i + 1;
-                    int delta_j = temp.end_j - temp.start_j + 1;
-                    //trebuie sa verific ca pozitiile astea nu sunt ocupate de alte nave
-                    */
-
-                    //printf("%d\n%d\n", delta_i, delta_j);
-                    if((((temp.start_i == temp.end_i) && ((temp.end_j - temp.start_j + 1) == 5)) || ((temp.start_j == temp.end_j) && ((temp.end_i - temp.start_i + 1) == 5))) && (check_position(player, &temp) == ERR_ok))
+                    printf("--You selected the Carrier. This ship needs to have a lenght of 5--\n");
+                    int ok = 1;  // 0 daca ii bine, 1 daca nu ii bine
+                    while(ok == 1)
                     {
-                        //printf("OK\n");
-                       
+                        SHIP temp;
+                        clear_buffer();
+
+                        if(reset_value != 0)
+                        {
+                            printf("-- The last position of your ship has been deleted. Please selecat a new position--\n");
+                            ship_delete(player, &player->player_ships.carrier);
+                            //remaining_ships++;
+                        }
+                        printf("\n\nRemainig ships:%d\n\n",remaining_ships);
+
+                        printf("--Please select the starting position--\n");
+                        get_position(&temp.start_i, &temp.start_j);
+
+                        printf("--Please select the ending position--\n");
+                        get_position(&temp.end_i, &temp.end_j);
+                        /*
+                        int delta_i = temp.end_i - temp.start_i + 1;
+                        int delta_j = temp.end_j - temp.start_j + 1;
+                        //trebuie sa verific ca pozitiile astea nu sunt ocupate de alte nave
+                        */
+
+                        //printf("%d\n%d\n", delta_i, delta_j);
+                        if((((temp.start_i == temp.end_i) && ((temp.end_j - temp.start_j + 1) == 5)) || ((temp.start_j == temp.end_j) && ((temp.end_i - temp.start_i + 1) == 5))) && (check_position(player, &temp) == ERR_ok))
+                        {
+                            //printf("OK\n");
+                            
                         printf("--The position was saved succesfully--\n");
                         place_ship(player, &temp);
                         player->player_ships.carrier = temp;
                         remaining_ships--;
+                        printf("\n\nRemainig ships:%d\n\n",remaining_ships);
                         ok = 0;
                         
-                    }
-                    else
-                    {
-                        printf("--The pozition you selected is not valid. Please try again\n");
-                    }
+                        }
+                        else
+                        {
+                            printf("--The pozition you selected is not valid. Please try again\n");
+                        }
                 
+                    }
+                    break;
                 }
-                break;
-            }
-            case 2:
-            {
-                printf("--You selected the Battleship. This ship needs to have a lenght of 4--\n");
-                int ok = 1;  // 0 daca ii bine, 1 daca nu ii bine
-                while(ok == 1)
+                case 2:
                 {
-                    SHIP temp;
-                    clear_buffer();
-
-                    printf("--Please select the starting position--\n");
-                    get_position(&temp.start_i, &temp.start_j);
-
-                    printf("--Please select the ending position--\n");
-                    get_position(&temp.end_i, &temp.end_j);
-
-                    if((((temp.start_i == temp.end_i) && ((temp.end_j - temp.start_j + 1) == 4)) || ((temp.start_j == temp.end_j) && ((temp.end_i - temp.start_i + 1) == 4))) && (check_position(player, &temp) == ERR_ok))
+                    printf("--You selected the Battleship. This ship needs to have a lenght of 4--\n");
+                    int ok = 1;  // 0 daca ii bine, 1 daca nu ii bine
+                    while(ok == 1)
                     {
-                        printf("--The position was saved succesfully--\n");
-                        place_ship(player,&temp);
-                        player->player_ships.battleship = temp;
-                        remaining_ships--;
-                        ok = 0;
-                    }
-                    else
-                    {
-                        printf("--The pozition you selected is not valid. Please try again\n");
-                    }
+                        SHIP temp;
+                        clear_buffer();
+
+                        if(reset_value != 0)
+                        {
+                            printf("-- The last position of your ship has been deleted. Please selecat a new position--\n");
+                            ship_delete(player, &player->player_ships.battleship);
+                        }
+
+
+                        printf("--Please select the starting position--\n");
+                        get_position(&temp.start_i, &temp.start_j);
+
+                        printf("--Please select the ending position--\n");
+                        get_position(&temp.end_i, &temp.end_j);
+
+                        if((((temp.start_i == temp.end_i) && ((temp.end_j - temp.start_j + 1) == 4)) || ((temp.start_j == temp.end_j) && ((temp.end_i - temp.start_i + 1) == 4))) && (check_position(player, &temp) == ERR_ok))
+                        {
+                            printf("--The position was saved succesfully--\n");
+                            place_ship(player,&temp);
+                            player->player_ships.battleship = temp;
+                            remaining_ships--;
+                            ok = 0;
+                        }
+                        else
+                        {
+                            printf("--The pozition you selected is not valid. Please try again\n");
+                        }
                 
+                    }
+                    break;
                 }
-                break;
-            }
-            case 3:
-            {
-                printf("--You selected the Cruiser. This ship needs to have a lenght of 3--\n");
-                int ok = 1;  // 0 daca ii bine, 1 daca nu ii bine
-                while(ok == 1)
+                case 3:
                 {
-                    SHIP temp;
-                    clear_buffer();
-
-                    printf("--Please select the starting position--\n");
-                    get_position(&temp.start_i, &temp.start_j);
-
-                    printf("--Please select the ending position--\n");
-                    get_position(&temp.end_i, &temp.end_j);
-
-                    if((((temp.start_i == temp.end_i) && ((temp.end_j - temp.start_j + 1) == 3)) || ((temp.start_j == temp.end_j) && ((temp.end_i - temp.start_i + 1) == 3))) && (check_position(player, &temp) == ERR_ok))
+                    printf("--You selected the Cruiser. This ship needs to have a lenght of 3--\n");
+                    int ok = 1;  // 0 daca ii bine, 1 daca nu ii bine
+                    while(ok == 1)
                     {
-                        printf("--The position was saved succesfully--\n");
-                        place_ship(player,&temp);
-                        player->player_ships.cruiser = temp;
-                        remaining_ships--;
-                        ok = 0;
-                    }
-                    else
-                    {
-                        printf("--The pozition you selected is not valid. Please try again\n");
-                    }
+                        SHIP temp;
+                        clear_buffer();
+
+                        if(reset_value != 0)
+                        {
+                            printf("-- The last position of your ship has been deleted. Please selecat a new position--\n");
+                            ship_delete(player, &player->player_ships.cruiser);
+                        }
+
+
+                        printf("--Please select the starting position--\n");
+                        get_position(&temp.start_i, &temp.start_j);
+
+                        printf("--Please select the ending position--\n");
+                        get_position(&temp.end_i, &temp.end_j);
+
+                        if((((temp.start_i == temp.end_i) && ((temp.end_j - temp.start_j + 1) == 3)) || ((temp.start_j == temp.end_j) && ((temp.end_i - temp.start_i + 1) == 3))) && (check_position(player, &temp) == ERR_ok))
+                        {
+                            printf("--The position was saved succesfully--\n");
+                            place_ship(player,&temp);
+                            player->player_ships.cruiser = temp;
+                            remaining_ships--;
+                            ok = 0;
+                        }
+                        else
+                        {
+                            printf("--The pozition you selected is not valid. Please try again\n");
+                        }
                 
+                    }
+                    break;
                 }
-                break;
-            }
-            case 4:
-            {
-                printf("--You selected the Submarine. This ship needs to have a lenght of 3--\n");
-                int ok = 1;  // 0 daca ii bine, 1 daca nu ii bine
-                while(ok == 1)
+                case 4:
                 {
-                    SHIP temp;
-                    clear_buffer();
-
-                    printf("--Please select the starting position--\n");
-                    get_position(&temp.start_i, &temp.start_j);
-
-                    printf("--Please select the ending position--\n");
-                    get_position(&temp.end_i, &temp.end_j);
-
-                    if((((temp.start_i == temp.end_i) && ((temp.end_j - temp.start_j + 1) == 3)) || ((temp.start_j == temp.end_j) && ((temp.end_i - temp.start_i + 1) == 3))) && (check_position(player, &temp) == ERR_ok))
+                    printf("--You selected the Submarine. This ship needs to have a lenght of 3--\n");
+                    int ok = 1;  // 0 daca ii bine, 1 daca nu ii bine
+                    while(ok == 1)
                     {
-                        printf("--The position was saved succesfully--\n");
-                        place_ship(player,&temp);
-                        player->player_ships.submarine = temp;
-                        remaining_ships--;
-                        ok = 0;
-                    }
-                    else
-                    {
-                        printf("--The pozition you selected is not valid. Please try again\n");
-                    }
+                        SHIP temp;
+                        clear_buffer();
+
+                        if(reset_value != 0)
+                        {
+                            printf("-- The last position of your ship has been deleted. Please selecat a new position--\n");
+                            ship_delete(player, &player->player_ships.submarine);
+                        }
+
+
+                        printf("--Please select the starting position--\n");
+                        get_position(&temp.start_i, &temp.start_j);
+
+                        printf("--Please select the ending position--\n");
+                        get_position(&temp.end_i, &temp.end_j);
+
+                        if((((temp.start_i == temp.end_i) && ((temp.end_j - temp.start_j + 1) == 3)) || ((temp.start_j == temp.end_j) && ((temp.end_i - temp.start_i + 1) == 3))) && (check_position(player, &temp) == ERR_ok))
+                        {
+                            printf("--The position was saved succesfully--\n");
+                            place_ship(player,&temp);
+                            player->player_ships.submarine = temp;
+                            remaining_ships--;
+                            ok = 0;
+                        }
+                        else
+                        {
+                            printf("--The pozition you selected is not valid. Please try again\n");
+                        }
                 
+                    }   
+                    break;
                 }
-                break;
-            }
-            case 5:
-            {
-                printf("--You selected the Destroyer. This ship needs to have a lenght of 2--\n");
-                int ok = 1;  // 0 daca ii bine, 1 daca nu ii bine
-                while(ok == 1)
+                case 5:
                 {
-                    SHIP temp;
-                    clear_buffer();
-
-                    printf("--Please select the starting position--\n");
-                    get_position(&temp.start_i, &temp.start_j);
-
-                    printf("--Please select the ending position--\n");
-                    get_position(&temp.end_i, &temp.end_j);
-
-                    if((((temp.start_i == temp.end_i) && ((temp.end_j - temp.start_j + 1) == 2)) || ((temp.start_j == temp.end_j) && ((temp.end_i - temp.start_i + 1) == 2))) && (check_position(player, &temp) == ERR_ok))
+                    printf("--You selected the Destroyer. This ship needs to have a lenght of 2--\n");
+                    int ok = 1;  // 0 daca ii bine, 1 daca nu ii bine
+                    while(ok == 1)
                     {
-                        printf("--The position was saved succesfully--\n");
-                        place_ship(player,&temp);
-                        player->player_ships.destroyer = temp;
-                        remaining_ships--;
-                        ok = 0;
-                    }
-                    else
-                    {
-                        printf("--The pozition you selected is not valid. Please try again\n");
-                    }
+                        SHIP temp;
+                        clear_buffer();
+
+                        if(reset_value != 0)
+                        {
+                            printf("-- The last position of your ship has been deleted. Please selecat a new position--\n");
+                            ship_delete(player, &player->player_ships.destroyer);
+                        }
+
+
+                        printf("--Please select the starting position--\n");
+                        get_position(&temp.start_i, &temp.start_j);
+
+                        printf("--Please select the ending position--\n");
+                        get_position(&temp.end_i, &temp.end_j);
+
+                        if((((temp.start_i == temp.end_i) && ((temp.end_j - temp.start_j + 1) == 2)) || ((temp.start_j == temp.end_j) && ((temp.end_i - temp.start_i + 1) == 2))) && (check_position(player, &temp) == ERR_ok))
+                        {
+                            printf("--The position was saved succesfully--\n");
+                            place_ship(player,&temp);
+                            player->player_ships.destroyer = temp;
+                            remaining_ships--;
+                            ok = 0;
+                        }
+                        else
+                        {
+                            printf("--The pozition you selected is not valid. Please try again\n");
+                        }
                 
+                    }
+                    break;
                 }
-                break;
-            }
-            default:
-            {
-                printf("--The ship you selected is not valid. Please select another ship--\n");
-            }
+                default:
+                {
+                    printf("--The ship you selected is not valid. Please select another ship--\n");
+                }
 
-        }
+            }
         printf("--Here is how your fleet looks like until now--\n");
         show_player(&player[0]);
     }
-
+    printf("--Do you want to modify the positions of your ships?--\n");
+    printf("--Type 1 for Yes / 0 for No--\n");
+    
+    scanf("%d", &reset_value);
+    //printf("%d", reset_value);
+    if(reset_value == 0)
+    {
+        reset = 0;
+    }
+    else
+    {
+    //printf("\n\nRemainig ships:%d\n\n",remaining_ships);
+    remaining_ships = 1;
+    }
+}
+    
 
 }
  
