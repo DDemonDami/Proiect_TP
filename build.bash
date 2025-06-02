@@ -1,0 +1,1 @@
+cc game.c gameinit.c positions.c computer.c -lraylib -lGL -lm -lpthread -ldl -lrt -lX11

@@ -5,107 +5,11 @@
 #include <ctype.h>
 #include <time.h>
 
-#define TABLE_SIZE 10
-
-typedef struct
-{
-    int i;
-    int j;
-}POSITION;
+#include "gameinit.h"
+#include "positions.h"
+#include "computer.h"
 
 
-typedef struct
-{
-    POSITION start;
-    POSITION end;
-}SHIP;
-
-
-typedef struct 
-{
-    SHIP carrier;
-    SHIP battleship;
-    SHIP cruiser;
-    SHIP submarine;
-    SHIP destroyer;
-    /*
-        fiecare nava va retine pozitia de incepere si de sfarsit 
-    */
-}SHIPS;
-
-typedef struct 
-{
-    uint16_t size;
-    uint16_t** table; 
-    int16_t id;
-    /*
-        valorile din tabel vor fi:
-        - 0 daca inca nu s a tras in acea casuta
-        - 1 daca avem barca acolo
-        - 2 daca avem acolo o barca si s a tras in ea
-        - 3 daca avem acolo barca moarta
-        - 4 ne arata ca a fost lovit patratul si nu a lovit nimic
-        id stocheaza numarul jucatorului(max 2)
-    */
-   SHIPS player_ships;
-   //stocheaza coordonatele fiecarei nave in parte
-}PLAYER;
-
-
-typedef enum 
-{
-    ERR_ok, 
-    INIT_err,
-    POZ_tken,
-    DEAD_Ship
-
-}ERR_CODE;
-
-void clear_buffer()
-{
-    while(getchar() != '\n');
-}
-
-
-ERR_CODE player_init(PLAYER* player, int player_id)
-{
-    player->size = TABLE_SIZE;
-    player->id = player_id;
-    if((player->table = (uint16_t**)malloc(player->size * sizeof(uint16_t*))) == NULL)
-    {
-        return INIT_err;
-    }
-
-    for(int i = 0; i < player->size; i++)
-    {
-        if((player->table[i] = (uint16_t*) malloc(player->size * sizeof(uint16_t))) == NULL)
-        {
-            return INIT_err;
-        }
-
-    }
-
-    for(int i = 0; i < player->size; i++)
-    {
-        for(int j = 0; j < player->size; j++)
-            {
-                player->table[i][j] = 0;
-            }
-    }
-
-    return ERR_ok;
-
-}
-
-void player_delete(PLAYER* player)
-{
-    for(int i = 0; i < player->size; i++)
-    {
-        free(player->table[i]);
-    }
-
-    free(player->table);
-}
 
 void show_player(PLAYER* player, int chk_enemy)
 {
@@ -222,18 +126,6 @@ void startup_messages(int* pl_num)
 
 }
 
-ERR_CODE init_players(PLAYER* player, int player_number)
-{
-    for(int i = 0; i < player_number; i++)
-    {
-        if(player_init(&player[i],i) != ERR_ok)
-        {
-            return INIT_err;
-        }
-    }   
-    return ERR_ok;
-}
-
 void show_players(PLAYER* player, int player_number)
 {
     for(int i = 0; i < player_number; i++)
@@ -242,155 +134,7 @@ void show_players(PLAYER* player, int player_number)
     }   
 }
 
-void delete_players(PLAYER* player, int player_number)
-{
-    for(int i = 0; i < player_number; i++)
-    {
-        player_delete(&player[i]);
-    }   
-}
 
-void get_position(int* poz_i, int* poz_j)
-{
-    char poz[4];
-    char c; 
-    int temp;
-
-    //fgets(poz,4,stdin);
-    int t = 1; //1 - nu a citit nimic; 2 - a citit eronat; 3 - eroare convertire; 0 - a citit si convertit corect
-    // int ok = 1; //folosit doar pentru a nu afisa mesajul de eroare prima data
-    while(t != 0)
-    {//format pozitie: A4
-        //clear_buffer();
-        //sterge toate caracterele care au ramas in buffer nefolosite pentu a nu da eroare la inceput
-
-        if(fgets(poz,4,stdin) == NULL)
-        {
-            printf("--There was an error when reading your position. Please try again--\n");
-            t = 2;
-        }
-        else if((sscanf(poz,"%c%d", &c, &temp) != 2))
-        {
-            printf("--Wrong position format. Try again--\n");
-            t = 2;
-        }
-        if(islower(c))
-        {
-            c = toupper(c);
-        }
-
-        if((c < 'A' || c > 'J'))
-            {
-                printf("--The letter that you selected is not valid. Please try again--\n");
-                t = 3;
-            }   
-                else if(temp < 0 || temp > 9)
-                {
-                    printf("--The number you selected is not valid. Please try again--\n");
-                    t = 3;
-                }
-                else
-                {
-                    t = 0;
-                }   
-    }
-    
-    *poz_j = (int)(c - 'A');
-    *poz_i = temp;
-    //ok = 0;
-
-}
-
-
-ERR_CODE check_position(PLAYER* player, SHIP* position)
-{
-    
-    if(position->start.i == position->end.i)
-    {
-        for(int j = position->start.j; j < position->end.j;j++)
-        {
-            if(player->table[position->start.i][j] != 0)
-                printf("%d ", j);
-                //return POZ_tken;
-        }
-    }
-    else
-    {
-        for(int i = position->start.i; i < position->end.i;i++)
-        {
-            if(player->table[i][position->start.j] != 0)
-                return POZ_tken;
-        }
-    }
-
-    return ERR_ok;
-}
-
-void place_ship(PLAYER* player, SHIP* position)
-{
-    //printf("Am intrat aici pt test\n");
-    if(position->start.i == position->end.i)
-    {
-        if(position->start.j < position->end.j)
-        {
-            for(int j = position->start.j; j <= position->end.j;j++)
-            {
-                player->table[position->start.i][j] = 1;    
-            }
-        }
-        else
-        {
-            //printf("Am intrat aici pt dir 3\n");
-            for(int j = position->start.j; j >= position->end.j; j--)
-            {
-                //printf("%d\n", j);
-                player->table[position->start.i][j] = 1;    
-            }
-            //printf("Am iesit din if ul pt dir 3\n");
-        }
-    }
-    else
-    {
-        //printf("Am intrat bine in else\n");
-        if(position->start.i < position->end.i)
-        {
-            for(int i = position->start.i; i <= position->end.i;i++)
-            {
-                player->table[i][position->start.j] = 1;
-            }
-        }
-        else
-        {
-           // printf("Am intrat aici pt directia 0\n");
-            for(int i = position->start.i; i >= position->end.i;i--)
-            {
-               // printf("%d\n", i);
-                player->table[i][position->start.j] = 1;
-            }
-        }
-    }
-
-
-}
-
-void ship_delete(PLAYER* player, SHIP* position)
-{
-    if(position->start.i == position->end.i)
-    {
-        for(int j = position->start.j; j <= position->end.j;j++)
-        {
-            player->table[position->start.i][j] = 0;    
-        }
-    }
-    else
-    {
-        for(int i = position->start.i; i <= position->end.i;i++)
-        {
-            player->table[i][position->start.j] = 0;
-        }
-    }
-
-}
 
 void ship_placement(PLAYER* player)
 {
@@ -459,7 +203,7 @@ void ship_placement(PLAYER* player)
                             //printf("OK\n");
                             
                         printf("--The position was saved succesfully--\n");
-                        place_ship(player, &temp);
+                        place_ship(player, &temp,0);
                         player->player_ships.carrier = temp;
                         remaining_ships--;
                         printf("\n\nRemainig ships:%d\n\n",remaining_ships);
@@ -499,7 +243,7 @@ void ship_placement(PLAYER* player)
                         if((((temp.start.i == temp.end.i) && ((temp.end.j - temp.start.j + 1) == 4)) || ((temp.start.j == temp.end.j) && ((temp.end.i - temp.start.i + 1) == 4))) && (check_position(player, &temp) == ERR_ok))
                         {
                             printf("--The position was saved succesfully--\n");
-                            place_ship(player,&temp);
+                            place_ship(player,&temp,0);
                             player->player_ships.battleship = temp;
                             remaining_ships--;
                             ok = 0;
@@ -537,7 +281,7 @@ void ship_placement(PLAYER* player)
                         if((((temp.start.i == temp.end.i) && ((temp.end.j - temp.start.j + 1) == 3)) || ((temp.start.j == temp.end.j) && ((temp.end.i - temp.start.i + 1) == 3))) && (check_position(player, &temp) == ERR_ok))
                         {
                             printf("--The position was saved succesfully--\n");
-                            place_ship(player,&temp);
+                            place_ship(player,&temp,0);
                             player->player_ships.cruiser = temp;
                             remaining_ships--;
                             ok = 0;
@@ -576,7 +320,7 @@ void ship_placement(PLAYER* player)
                         if((((temp.start.i == temp.end.i) && ((temp.end.j - temp.start.j + 1) == 3)) || ((temp.start.j == temp.end.j) && ((temp.end.i - temp.start.i + 1) == 3))) && (check_position(player, &temp) == ERR_ok))
                         {
                             printf("--The position was saved succesfully--\n");
-                            place_ship(player,&temp);
+                            place_ship(player,&temp,0);
                             player->player_ships.submarine = temp;
                             remaining_ships--;
                             ok = 0;
@@ -614,7 +358,7 @@ void ship_placement(PLAYER* player)
                         if((((temp.start.i == temp.end.i) && ((temp.end.j - temp.start.j + 1) == 2)) || ((temp.start.j == temp.end.j) && ((temp.end.i - temp.start.i + 1) == 2))) && (check_position(player, &temp) == ERR_ok))
                         {
                             printf("--The position was saved succesfully--\n");
-                            place_ship(player,&temp);
+                            place_ship(player,&temp,0);
                             player->player_ships.destroyer = temp;
                             remaining_ships--;
                             ok = 0;
@@ -657,133 +401,6 @@ void ship_placement(PLAYER* player)
 
 }
 
-void random_ship(PLAYER* enemy, SHIP* temp, int ship_size)
-{
-   
-    int direction = rand() % 4;
-  
-    //int direction = 3;
-    temp->start.i = rand() % 10;
-    temp->start.j= rand() % 10;
-
-    printf("Start i: %d, Start j: %d, Direction: %d\n", temp->start.i, temp->start.j, direction);
-
-    int ship_is_placeable = 1;
-            // 1 - daca nava nu poate fi pozitionata si trebe o alta poz initiala; 0 - daca se poate aseza
-    int repeat = 0;
-    // ii folosit pt a vedea ca nava sa nu intre in bucla infinita 
-
-    while(ship_is_placeable != 0 && repeat <= 3)
-        {
-            //printf("Am intrat in while\n");
-            switch(direction)
-            {
-                case 0:
-                {
-                    temp->end.j = temp->start.j;
-                    temp->end.i = temp->start.i - ship_size + 1;
-                   // printf("End i: %d, End j: %d. direction :%d\n", temp->end.i, temp->end.j, direction);
-
-                    if((temp->end.i >= 0 && temp->end.i <= 9) && (check_position(enemy, temp) == ERR_ok))
-                    {
-                        //place_ship(enemy, temp);
-                        //printf("The ship is placed\n");
-                        ship_is_placeable = 0;
-                    }
-                    else
-                    {
-                        repeat++;
-                        direction = (direction + 1) % 4;
-
-                    }
-                    //printf("ii ok 2\n");
-                    break;
-                }
-                case 1:
-                {
-                    temp->end.i = temp->start.i;
-                    temp->end.j = temp->start.j + ship_size - 1;
-
-                   /// printf("Interval: %d, Ii ok:%d\n",(temp->end.j >= 0 && temp->end.j <= 9),(check_position(enemy, temp) == ERR_ok));
-                    //printf("End i: %d, End j: %d. direction :%d\n", temp->end.i, temp->end.j, direction);
-
-                    //printf("%d\n", (temp->end.j >= 0 && temp->end.j <= 9) && (check_position(enemy, temp) == ERR_ok));
-                    if((temp->end.j >= 0 && temp->end.j <= 9) && (check_position(enemy, temp) == ERR_ok))
-                    {
-                        ship_is_placeable = 0;
-                       // place_ship(enemy, temp);
-                      //  printf("ii ok 2\n");
-                    }
-                    else
-                    {
-                        repeat++;
-                        //printf("Trecem la urm directie\n");
-                        direction = (direction + 1) % 4;
-                    }
-                    //printf("ii ok 2\n");
-                    break;
-                }
-                case 2:
-                {
-                    temp->end.j = temp->start.j;
-                    temp->end.i = temp->start.i + ship_size - 1;
-                    //printf("End i: %d, End j: %d. direction :%d\n", temp->end.i, temp->end.j, direction);
-                    if((temp->end.i >= 0 && temp->end.i <= 9) && (check_position(enemy, temp) == ERR_ok))
-                    {
-                        ship_is_placeable = 0;
-                       // place_ship(enemy, temp);
-                       // printf("ii ok 2\n");
-                    }
-                    else
-                    {
-                        repeat++;
-                       // printf("Trecem la urm directie\n");
-                        direction = (direction + 1) % 4;
-                    }
-                    
-                    break;
-                }
-                case 3:
-                {
-                    temp->end.i = temp->start.i;
-                    temp->end.j = temp->start.j - ship_size + 1; 
-                    //printf("End i: %d, End j: %d. direction :%d\n", temp->end.i, temp->end.j, direction);
-
-                    if((temp->end.j >= 0 && temp->end.j <= 9) && (check_position(enemy, temp) == ERR_ok))   
-                    {
-                        ship_is_placeable = 0;
-                        //place_ship(enemy, temp);
-                        //printf("ii ok 2\n");
-                    }
-                    else
-                    {
-                        repeat++;
-                        direction = (direction + 1) % 4;
-                    }
-                    
-                    break;
-                }
-               
-            }
-             if(ship_is_placeable == 0)
-                {
-                    place_ship(enemy,temp);
-                }
-    }
-
-    printf("End i: %d, End j: %d\n", temp->end.i, temp->end.j);
-            
-
-}
-
-void random_ships(PLAYER* enemy)
-{
-
-
-}
-
-
-
 
 void game_msg_start()
 {
@@ -793,92 +410,199 @@ void game_msg_start()
     printf("--Here is a little head's up of what you will encounter on the board--\n");
     printf("-- -O- Represents an tile that has not been hit yet--\n");
     printf("-- -+- Represents that an ship is at that location and has been hit--\n");
-    printf("-- -#- Represents a dead ship--/n");
-    printf("-- -*- Represents a tile that hs been selected--/n");
-} 
-/*
-ERR_CODE dead_ship(PLAYER* player, SHIP* ship)
-{
-    int code = 1;
-    //code  = 1 daca ship is dead else 0 if ship alive
-    
-    if(ship->start.i == ship->end.i)
-    {
-        for(int j = ship->start.j; j <= ship->end.j;j++)
-        {
-            if(player->table[ship->start.i][j] == 1)
-            {
-                code = 0;
-            }    
-        }
-        if(code == 1)
-        {
-            //the ship is dead
-            for(int j = ship->start.j; j <= ship->end.j;j++)
-                player->table[ship->start.i][j] = 3;
-                return DEAD_Ship;
-        }
-    }
-    else
-    {
-        for(int i = ship->start.i; i <= ship->end.i;i++)
-        {
-            if(player->table[i][ship->start.j] == 1)
-            {
-                code = 0;
-            }
-            if(code == 1)
-            {
-                //the ship is dead
-                for(int i = ship->start.i; i <= ship->end.i;i++)
-                    player->table[i][ship->start.j] = 3;
-                    return DEAD_Ship;
-
-            }
-        }
-    }
-    return ERR_ok;
+    printf("-- -#- Represents a dead ship--\n");
+    printf("-- -*- Represents a tile that hs been selected--\n");
 }
 
-*/
 
-void start_game(PLAYER* player, PLAYER* enemy)
+
+int start_game(PLAYER* player, PLAYER* enemy)
 {
+    system("clear");
     game_msg_start();
+   // random_ships(player);
+    random_ships(enemy);
   //  srand(time(NULL));
+   // show_player(enemy,0);
+
+    int dead_ships_player = 0; // stocam cate nave sunt distruse de la fiecare jucator
+    int dead_ships_enemy = 0;
+
     int game_going = 1;
-    SHIP position;
+    POSITION position;
+    int hit = 0;
+    POSITION rand_hit;
+    POSITION fst_hit;
+    int dir = -1;
+    int correct_dir = 0;
+    //correct_dir ia 1 daca ii  corect directia
 
     while(game_going == 1)
     {
-        printf("--Here are the 2 boards. Select the tile you want to hit on your enemy's board--\n");
+        
+        printf("\n--Here are the 2 boards. Select the tile you want to hit on your enemy's board--\n");
+        show_players(player,2);
+
         printf("\n--It's your turn.--\n");
+        
+        // trebuie sa fac verificarea ca sa nu se selecteze aceeasi casuta de 2 ori
+           // clear_buffer();
+            get_position(&position.i, &position.j);
+            //clear_buffer();
 
-        clear_buffer();
-        get_position(&position.start.i, &position.start.j);
 
-        if(enemy->table[position.start.i][position.start.j] == 0)
+        //printf("\n\n POZITIE TAST %d %d\n\n", position.i, position.j);
+    
+
+        if(enemy->table[position.i][position.j] == 0)
         {
-            enemy->table[position.start.i][position.start.j] = 4;
+            enemy->table[position.i][position.j] = 4;
             printf("--That was a miss--\n");
         }
         else
         {
-            enemy->table[position.start.i][position.start.j] = 2;
+            enemy->table[position.i][position.j] = 2;
             printf("--Well done!. You hit a ship. Keep going!--\n");
 
         }
 
         printf("\n--It's your enemy's turn--\n");
 
+       // printf("\n\nCorrect dir; dir; hit; %d %d %d \n\n", correct_dir, dir, hit);
 
+        POSITION poz;
+        poz.i = rand() % 10;
+        poz.j = rand() % 10;
 
+        if(hit == 0)
+        {
+            while(player->table[poz.i][poz.j] != 1 && player->table[poz.i][poz.j] != 0)
+            {
+                poz.i = rand() % 10;
+                poz.j = rand() % 10;
+            }
+        }
+        else
+        {
+            int counter = 0;
+           // printf("\nAm intrat in ramura de calc a poz urm\n\n");
+            do{
+            //printf("Suntem in do while\n\n");
+            if(correct_dir == 1)
+            {
+                dir = dir;
+            }
+            else if(dir == -1)
+            {
+                dir = rand() % 4;
+            }
 
+            if(counter > 0)
+            {
+                dir = (dir + 1) % 4;
+            }
 
+            
+
+            switch(dir)
+            {
+                case 0:
+                {
+                    poz.j = rand_hit.j;
+                    poz.i = rand_hit.i + 1;
+                    break;
+                }
+                case 1:
+                {
+                    poz.i = rand_hit.i;
+                    poz.j = rand_hit.j - 1;
+                    break;
+                }
+                case 2:
+                {
+                    poz.j = rand_hit.j;
+                    poz.i = rand_hit.i - 1;
+                    break;
+
+                }
+                case 3:
+                {
+                    poz.i = rand_hit.i;
+                    poz.j = rand_hit.j + 1;
+                    break;
+                }
+            }
+            counter ++;
+            }while((poz.i < 0 || poz.i >= 10) || (poz.j < 0 || poz.j >= 10));
+
+        }
+        //printf("\n\nRAND poz : %d %d\n\n", poz.i, poz.j);
+
+        if(player->table[poz.i][poz.j] == 0)
+        {
+            player->table[poz.i][poz.j] = 4;
+            printf("--The enemy missed your fleet! Keep going.--\n");
+            if(dir != -1)
+            {
+                dir = (dir + 1) % 4;
+                rand_hit = fst_hit;
+            }
+        }
+        else
+        {
+            player->table[poz.i][poz.j] = 2;
+            printf("--The enemy hit one of your ships! Keep going.--\n");
+            hit = 1;
+            rand_hit = poz;
+            if(dir != -1)
+            {
+                correct_dir = 1;
+            }
+            else
+            {
+                fst_hit = poz;
+            }
+
+        }
+
+       // printf("\n\nCorrect dir; dir; hit; %d %d %d \n\n", correct_dir, dir, hit);
+
+        if(chk_dead_ships(player) == 1)
+        {
+            dead_ships_player++;
+            correct_dir = 0;
+            dir = -1;
+            hit = 0;
+            printf("Nu am intrat aici din greseala\n\n");
+
+        }
+
+        if(chk_dead_ships(enemy) == 1)
+        {
+            dead_ships_enemy++;
+            
+        }
+        
+        //printf("\nNR PLAYER | NR CALC  %d | %d\n\n", dead_ships_player, dead_ships_enemy);
+
+        if(dead_ships_enemy == 5 || dead_ships_player == 5)
+        {
+            game_going = 0;
+        }
+
+    }
+
+    if(dead_ships_enemy == 5)
+    {
+        return 1;
+    }
+    else if(dead_ships_player == 5)
+    {
+        return 0;
     }
     
 
-
+    return 0;
 }
 
 
@@ -900,19 +624,25 @@ int main(void)
         printf("Eroare alocare player\n");
         exit(0);
     }
+   
+    ship_placement(&player[0]);
 
+    if(start_game(&player[0], &player[1]) == 1)
+    {
+        printf("--Yaay! You won. Well Done.--\n");
+    }
+    else
+    {
+        printf("--You lost, but you can always play again and have a chance to win--\n");
+    }
 
-   // ship_placement(&player[0]);
+    
     //game_msg_start();
 
-    SHIP poz;
-
-    random_ship(&player[1], &poz, 5);
-
-
+    
    // show_players(player, 2);
-    show_player(&player[1],0);
-    //delete_players(player, player_number);
+    //show_player(&player[1],0);
+    delete_players(player, player_number);
   
     printf("totul ok\n");
     return 0;
